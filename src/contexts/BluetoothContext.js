@@ -10,7 +10,6 @@ export const BluetoothProvider = ({ children }) => {
     const [isConnected, setIsConnected] = useState(false);
     const [lastParsedMessage, setLastParsedMessage] = useState(null);
     const readSubscription = useRef(null);
-    const dataBuffer = useRef('');
 
     // FUNÇÃO NOVA: Pede a permissão pro usuário na tela do celular
     const requestBluetoothPermissions = async () => {

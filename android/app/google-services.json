@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "177462637531",
+    "firebase_url": "https://whackamole-73f75-default-rtdb.firebaseio.com",
+    "project_id": "whackamole-73f75",
+    "storage_bucket": "whackamole-73f75.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:177462637531:android:7786dc9000bceccb0cedfe",
+        "android_client_info": {
+          "package_name": "com.whackamole"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfd_eLgGdvSbtXz-3DlejW7hrbKDbe7Fg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

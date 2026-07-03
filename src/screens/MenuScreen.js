@@ -5,7 +5,7 @@ import { BluetoothContext } from '../contexts/BluetoothContext';
 const HC05_MAC_ADDRESS = "00:21:13:01:D7:ED"; 
 
 export default function MenuScreen() {
-    const { isConnected, connectToDevice, sendCommand, simulateHardwareMessage } = useContext(BluetoothContext);
+    const { isConnected, connectToDevice, sendCommand } = useContext(BluetoothContext);
 
     return (
         <View style={styles.container}>

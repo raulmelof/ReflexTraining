@@ -25,17 +25,30 @@ export const parseDeviceMessage = (rawData) => {
         return {
             category,
             action,
-            value1: parts[2] || null, // Contagem (3, 2, 1)
+            value1: parts[2] || null, // Pega o TEMP ou SURV
+            value2: parts[3] ? parseInt(parts[3], 10) : null, // Pega os segundos (30, 60, etc)
         };
     }
 
     if (category === 'STAT') {
+        const modo = parts[1]; // Vai ser 'TEMP' ou 'SURV'
+        const tempoLimite = parts[2]; // Vai ser '30', '60' ou '0'
+        
+        // Constrói o texto bonitinho para o Firebase
+        let modoFormatado = 'Desconhecido';
+        if (modo === 'TEMP') {
+            modoFormatado = `TEMPO (${tempoLimite}s)`;
+        } else if (modo === 'SURV') {
+            modoFormatado = 'SOBREVIVÊNCIA';
+        }
+
         return {
             category: 'STAT',
-            score: parseInt(parts[1], 10),
-            errors: parseInt(parts[2], 10),
-            avgTime: parseInt(parts[3], 10),
-            avgForce: parseInt(parts[4], 10),
+            matchMode: modoFormatado, // Manda a string pronta ("TEMPO (30s)")
+            score: parseInt(parts[3], 10),
+            errors: parseInt(parts[4], 10),
+            avgTime: parseInt(parts[5], 10),
+            avgForce: parseInt(parts[6], 10),
         };
     }
 

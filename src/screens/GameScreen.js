@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { BluetoothContext } from '../contexts/BluetoothContext';
+import { saveMatchStats } from '../services/FirebaseService';
 
 export default function GameScreen({ onGoBack }) {
     const { lastParsedMessage } = useContext(BluetoothContext);
@@ -16,9 +17,9 @@ export default function GameScreen({ onGoBack }) {
     useEffect(() => {
         if (!lastParsedMessage) return;
 
-        const { category, action, value1 } = lastParsedMessage;
+        const { category, action, value1, matchMode, score: statScore, errors, avgTime, avgForce } = lastParsedMessage;
 
-        // 1. Contagem Regressiva
+        // Contagem Regressiva
         if (category === 'SYS' && action === 'COUNT') {
             setGameState('CONTANDO');
             setDisplayInfo(value1.toString());
@@ -26,7 +27,7 @@ export default function GameScreen({ onGoBack }) {
             circleScale.setValue(0);
         }
 
-        // 2. Novo Alvo: Ativa a animação de encolhimento local (Desacoplada do Bluetooth)
+        // Novo Alvo: Ativa a animação de encolhimento local (Desacoplada do Bluetooth)
         if (category === 'GAME' && action === 'NEXT') {
             setGameState('JOGANDO');
             setDisplayInfo('VAI!');
@@ -40,7 +41,7 @@ export default function GameScreen({ onGoBack }) {
             }).start();
         }
 
-        // 3. Acerto
+        // Acerto
         if (category === 'GAME' && action === 'HIT') {
             circleScale.stopAnimation(); // Para o círculo na hora
             circleScale.setValue(0);     // Esconde o círculo
@@ -49,18 +50,21 @@ export default function GameScreen({ onGoBack }) {
             setDisplayInfo(`+1`);
         }
 
-        // 4. Erro ou Estouro de Tempo
+        // Erro ou Estouro de Tempo
         if (category === 'GAME' && (action === 'MISS' || action === 'TIME')) {
             circleScale.stopAnimation();
             circleScale.setValue(0);
             setDisplayInfo(action === 'MISS' ? 'ERROU!' : 'TEMPO ESGOTADO!');
         }
 
-        // 5. Placar Final (Estatísticas recebidas)
+        // Placar Final (Estatísticas recebidas)
         if (category === 'STAT') {
             setGameState('FIM');
             setDisplayInfo(`FINALIZADO`);
-            // Aqui em breve enviaremos os dados pro Firebase!
+            
+            // Invoca a camada de serviço passando os dados crus que a STM32 processou!
+            // Assumimos 'TEMPO' como padrão aqui, mas você pode passar a variável do modo atual
+            saveMatchStats(matchMode, statScore, errors, avgTime, avgForce);
         }
 
     }, [lastParsedMessage, circleScale]);
