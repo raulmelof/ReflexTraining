@@ -1,7 +1,15 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, StatusBar } from 'react-native';
 import { BluetoothContext } from '../contexts/BluetoothContext';
 import { saveMatchStats } from '../services/FirebaseService';
+
+// Componente do botão reaproveitado para o padrão Gabinete
+const ArcadeButton = ({ title, onPress }) => (
+    <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={styles.arcadeButton}>
+        <Text style={styles.buttonText}>{title}</Text>
+        <View style={styles.buttonShadow} />
+    </TouchableOpacity>
+);
 
 export default function GameScreen({ onGoBack }) {
     const { lastParsedMessage } = useContext(BluetoothContext);
@@ -10,8 +18,11 @@ export default function GameScreen({ onGoBack }) {
     const [displayInfo, setDisplayInfo] = useState('');
     const [score, setScore] = useState(0);
     const [lastReaction, setLastReaction] = useState(0);
+    
+    // Novo estado: Memória local para imprimir o recibo de estatísticas no final
+    const [finalStats, setFinalStats] = useState(null);
 
-    // O "Motor" da nossa animação do círculo
+    // O "Motor" da nossa animação (agora usado para o quadrado de mira)
     const circleScale = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -23,47 +34,47 @@ export default function GameScreen({ onGoBack }) {
         if (category === 'SYS' && action === 'COUNT') {
             setGameState('CONTANDO');
             setDisplayInfo(value1.toString());
-            // Animação de pulso no número
             circleScale.setValue(0);
         }
 
-        // Novo Alvo: Ativa a animação de encolhimento local (Desacoplada do Bluetooth)
+        // Novo Alvo: Ativa a caixa de mira retrô
         if (category === 'GAME' && action === 'NEXT') {
             setGameState('JOGANDO');
             setDisplayInfo('VAI!');
             
-            // value1 é o timeout (ex: 1500ms). A animação começa no tamanho máximo (1) e vai até sumir (0)
             circleScale.setValue(1);
             Animated.timing(circleScale, {
                 toValue: 0,
                 duration: value1,
-                useNativeDriver: true, // Garante 60 FPS rodando em C++ fora da thread do JS
+                useNativeDriver: true,
             }).start();
         }
 
         // Acerto
         if (category === 'GAME' && action === 'HIT') {
-            circleScale.stopAnimation(); // Para o círculo na hora
-            circleScale.setValue(0);     // Esconde o círculo
+            circleScale.stopAnimation(); 
+            circleScale.setValue(0);     
             setScore(prev => prev + 1);
-            setLastReaction(value1);     // Tempo de reação
-            setDisplayInfo(`+1`);
+            setLastReaction(value1);     
+            setDisplayInfo('+1');
         }
 
         // Erro ou Estouro de Tempo
         if (category === 'GAME' && (action === 'MISS' || action === 'TIME')) {
             circleScale.stopAnimation();
             circleScale.setValue(0);
-            setDisplayInfo(action === 'MISS' ? 'ERROU!' : 'TEMPO ESGOTADO!');
+            setDisplayInfo(action === 'MISS' ? 'ERROU!' : 'ESGOTADO!');
         }
 
         // Placar Final (Estatísticas recebidas)
         if (category === 'STAT') {
             setGameState('FIM');
-            setDisplayInfo(`FINALIZADO`);
+            setDisplayInfo('FIM DE JOGO');
             
-            // Invoca a camada de serviço passando os dados crus que a STM32 processou!
-            // Assumimos 'TEMPO' como padrão aqui, mas você pode passar a variável do modo atual
+            // Grava os dados para o Recibo da Interface
+            setFinalStats({ matchMode, statScore, errors, avgTime, avgForce });
+
+            // Envia para as nuvens
             saveMatchStats(matchMode, statScore, errors, avgTime, avgForce);
         }
 
@@ -71,48 +82,162 @@ export default function GameScreen({ onGoBack }) {
 
     return (
         <View style={styles.container}>
-            {/* Header com os dados ao vivo */}
-            <View style={styles.header}>
-                <Text style={styles.scoreText}>ACERTOS: {score}</Text>
-                <Text style={styles.reactionText}>ÚLTIMA REAÇÃO: {lastReaction}ms</Text>
-            </View>
+            <StatusBar backgroundColor="#e6ddbc" barStyle="dark-content" />
 
-            {/* O Palco Central da Animação */}
-            <View style={styles.stage}>
-                {/* O Círculo Animado (Só aparece no modo Sobrevivência/Tempo durante o NEXT) */}
-                <Animated.View style={[
-                    styles.circle,
-                    { transform: [{ scale: circleScale }] }
-                ]} />
+            {/* A Carcaça do Monitor */}
+            <View style={styles.cabinetScreen}>
                 
-                <Text style={styles.centerDisplay}>{displayInfo}</Text>
+                {/* Header do Visor LCD */}
+                <View style={styles.screenHeader}>
+                    <Text style={styles.headerText}>PTS: {score}</Text>
+                    <Text style={styles.headerText}>REAÇÃO: {lastReaction}MS</Text>
+                </View>
+
+                {/* Palco Central do Jogo */}
+                <View style={styles.stage}>
+                    {gameState !== 'FIM' ? (
+                        <>
+                            {/* O Alvo (quadrado de mira que fecha) */}
+                            <Animated.View style={[
+                                styles.targetVisual,
+                                { transform: [{ scale: circleScale }] }
+                            ]} />
+                            
+                            <Text style={styles.centerDisplay}>{displayInfo}</Text>
+                        </>
+                    ) : (
+                        /* O Recibo Terminal no Fim do Jogo */
+                        <View style={styles.receiptContainer}>
+                            <Text style={styles.receiptTitle}>--- RELATÓRIO DO SISTEMA ---</Text>
+                            <Text style={styles.receiptLine}>MODO DE JOGO: {finalStats?.matchMode}</Text>
+                            <Text style={styles.receiptLine}>ALVOS DESTRUÍDOS: {finalStats?.statScore}</Text>
+                            <Text style={styles.receiptLine}>FALHAS: {finalStats?.errors}</Text>
+                            <Text style={styles.receiptLine}>TEMPO MÉDIO: {finalStats?.avgTime}ms</Text>
+                            <Text style={styles.receiptLine}>FORÇA MÉDIA: {finalStats?.avgForce}</Text>
+                            <Text style={styles.receiptTitle}>----------------------------</Text>
+                        </View>
+                    )}
+                </View>
             </View>
 
-            {/* Rodapé Dinâmico */}
-            {gameState === 'FIM' && (
-                <View style={styles.footer}>
-                    <Text style={styles.finishText} onPress={onGoBack}>VOLTAR AO MENU</Text>
-                </View>
-            )}
+            {/* Rodapé Físico (Fora do Monitor) */}
+            <View style={styles.controlsArea}>
+                {gameState === 'FIM' ? (
+                    <ArcadeButton title="[ VOLTAR AO MENU ]" onPress={onGoBack} />
+                ) : (
+                    <Text style={styles.instructionText}>ATENÇÃO AOS ALVOS NA MESA</Text>
+                )}
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000', padding: 20 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-    scoreText: { color: '#FFF', fontSize: 24, fontWeight: '900' },
-    reactionText: { color: '#0F0', fontSize: 24, fontWeight: '900' },
-    stage: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    circle: {
-        position: 'absolute',
-        width: 350,
-        height: 350,
-        borderRadius: 175,
-        borderWidth: 10,
-        borderColor: '#FFF',
+    container: { 
+        flex: 1, 
+        backgroundColor: '#e6ddbc', // Creme da carcaça do fliperama
+        padding: 20, 
+        justifyContent: 'space-between' 
     },
-    centerDisplay: { color: '#FFF', fontSize: 96, fontWeight: '900', letterSpacing: -2 },
-    footer: { marginBottom: 40, alignItems: 'center' },
-    finishText: { color: '#000', backgroundColor: '#FFF', padding: 20, fontSize: 24, fontWeight: '900' },
+    cabinetScreen: {
+        flex: 1,
+        backgroundColor: '#262525', // Tela Cinza Chumbo
+        borderWidth: 8,
+        borderColor: '#525252', // Borda da tela embutida
+        marginTop: 20,
+        padding: 15,
+        overflow: 'hidden',
+    },
+    screenHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderBottomWidth: 4,
+        borderBottomColor: '#525252',
+        paddingBottom: 15,
+    },
+    headerText: { 
+        color: '#e6ddbc', 
+        fontSize: 22, 
+        fontWeight: '900',
+        letterSpacing: 1 
+    },
+    stage: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
+    targetVisual: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderWidth: 16,
+        borderColor: '#822626', // Vermelho ferrugem como alvo
+        borderRadius: 15, // Forma de caixa de mira ao invés de círculo
+    },
+    centerDisplay: { 
+        color: '#e6ddbc', 
+        fontSize: 80, 
+        fontWeight: '900', 
+        letterSpacing: -2,
+        textAlign: 'center'
+    },
+    receiptContainer: {
+        width: '100%',
+        padding: 10,
+    },
+    receiptTitle: {
+        color: '#822626',
+        fontSize: 18,
+        fontWeight: '900',
+        marginBottom: 20,
+        marginTop: 10,
+        letterSpacing: 1,
+        textAlign: 'center',
+    },
+    receiptLine: {
+        color: '#e6ddbc',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        letterSpacing: 1,
+    },
+    controlsArea: {
+        marginTop: 20,
+        marginBottom: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 80,
+    },
+    instructionText: {
+        color: '#262525',
+        fontSize: 16,
+        fontWeight: '900',
+        letterSpacing: 2,
+    },
+    arcadeButton: {
+        borderWidth: 4,
+        borderColor: '#262525',
+        backgroundColor: '#690202',
+        paddingVertical: 18,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        position: 'relative',
+        width: '100%',
+    },
+    buttonText: {
+        color: '#e6ddbc',
+        fontSize: 20,
+        fontWeight: '900',
+        letterSpacing: 1.5,
+        zIndex: 2,
+    },
+    buttonShadow: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 6,
+        backgroundColor: '#822626',
+        zIndex: 1,
+    },
 });
