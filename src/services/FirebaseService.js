@@ -1,45 +1,83 @@
-import firestore from '@react-native-firebase/firestore';
+// services/FirebaseService.js
+import { getApp } from '@react-native-firebase/app';
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    where,
+    limit,
+    serverTimestamp,
+} from '@react-native-firebase/firestore';
+
+// Instância única do Firestore
+const db = getFirestore(getApp());
 
 export const saveMatchStats = async (mode, score, errors, avgTime, avgForce, selectedTime = 0) => {
     try {
-        console.log('☁️ [FIREBASE] Enviando métricas da partida...');
-        
-        // Cria um documento dentro da coleção "MatchHistory"
-        await firestore().collection('MatchHistory').add({
-            modo_jogo: mode,             // 'TEMPO' ou 'SOBREVIVÊNCIA'
-            acertos: score,              // Quantas luzes apagou
-            erros: errors,               // Quantas vezes errou o alvo
-            media_reacao_ms: avgTime,    // Tempo médio de reação (Milissegundos)
-            media_forca: avgForce,       // Força média aplicada no piezo
+        console.log('[FIREBASE] Enviando métricas da partida...');
+
+        await addDoc(collection(db, 'MatchHistory'), {
+            modo_jogo:         mode,
+            acertos:           score,
+            erros:             errors,
+            media_reacao_ms:   avgTime,
+            media_forca:       avgForce,
             tempo_selecionado: selectedTime,
-            data_partida: firestore.FieldValue.serverTimestamp(), // Pega a hora exata do servidor do Google
+            data_partida:      serverTimestamp(),
         });
 
-        console.log('✅ [FIREBASE] Partida salva com sucesso!');
+        console.log('[FIREBASE] Partida salva com sucesso!');
     } catch (error) {
-        console.error('❌ [FIREBASE] Erro ao salvar dados:', error);
+        console.error('[FIREBASE] Erro ao salvar dados:', error);
     }
 };
 
 export const getMatchHistory = async () => {
     try {
-        console.log('☁️ [FIREBASE] Buscando histórico...');
-        // Sintaxe correta do @react-native-firebase encadeando os métodos!
-        const querySnapshot = await firestore()
-            .collection('MatchHistory')
-            .orderBy('data_partida', 'desc')
-            .limit(10)
-            .get();
-        
+        console.log('[FIREBASE] Buscando histórico...');
+
+        const modos = [
+            'TEMPO (30s)',
+            'TEMPO (60s)',
+            'TEMPO (90s)',
+            'TEMPO (120s)',
+            'SOBREVIVÊNCIA',
+        ];
+
+        // Dispara as 5 queries ao mesmo tempo (paralelo)
+        const promises = modos.map(modo =>
+            getDocs(
+                query(
+                    collection(db, 'MatchHistory'),
+                    where('modo_jogo', '==', modo),
+                    limit(10)
+                )
+            )
+        );
+
+        const snapshots = await Promise.all(promises);
+
         const history = [];
-        
-        querySnapshot.forEach((doc) => {
-            history.push({ id: doc.id, ...doc.data() });
+        snapshots.forEach(snapshot => {
+            snapshot.forEach(doc => {
+                history.push({ id: doc.id, ...doc.data() });
+            });
         });
-        
+
+        // Ordena do mais recente para o mais antigo
+        history.sort((a, b) => {
+            const tA = a.data_partida?.seconds ?? 0;
+            const tB = b.data_partida?.seconds ?? 0;
+            return tB - tA;
+        });
+
+        console.log(`[FIREBASE] ${history.length} partidas encontradas.`);
         return history;
+
     } catch (error) {
-        console.error("Erro ao buscar estatísticas do Firebase: ", error);
+        console.error('[FIREBASE] Erro ao buscar histórico:', error.code, error.message);
         return [];
     }
 };
