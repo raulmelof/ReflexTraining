@@ -12,7 +12,7 @@ const ArcadeButton = ({ title, onPress }) => (
 );
 
 export default function GameScreen({ onGoBack }) {
-    const { lastParsedMessage } = useContext(BluetoothContext);
+    const { lastParsedMessage } = useContext(BluetoothContext); // Consome payload UART interpretado
     
     const [gameState, setGameState] = useState('PREPARANDO'); // PREPARANDO, CONTANDO, JOGANDO, FIM
     const [displayInfo, setDisplayInfo] = useState('');
@@ -30,7 +30,7 @@ export default function GameScreen({ onGoBack }) {
 
         const { category, action, value1, matchMode, score: statScore, errors, avgTime, avgForce } = lastParsedMessage;
 
-        // Contagem Regressiva
+        // Contagem Regressiva (Parsing pacote <SYS,COUNT,...>)
         if (category === 'SYS' && action === 'COUNT') {
             setGameState('CONTANDO');
             setDisplayInfo(value1.toString());
@@ -43,16 +43,16 @@ export default function GameScreen({ onGoBack }) {
             setDisplayInfo('VAI!');
             
             circleScale.setValue(1);
-            Animated.timing(circleScale, {
+            Animated.timing(circleScale, { // Animação interpolada sincada c/ timeout do MCU
                 toValue: 0,
                 duration: value1,
-                useNativeDriver: true,
+                useNativeDriver: true, // GPU render p/ evitar gargalo JS thread
             }).start();
         }
 
-        // Acerto
+        // Acerto (<GAME,HIT,...>)
         if (category === 'GAME' && action === 'HIT') {
-            circleScale.stopAnimation(); 
+            circleScale.stopAnimation(); // Cancela interpolação ativa
             circleScale.setValue(0);     
             setScore(prev => prev + 1);
             setLastReaction(value1);     
@@ -66,7 +66,7 @@ export default function GameScreen({ onGoBack }) {
             setDisplayInfo(action === 'MISS' ? 'ERROU!' : 'ESGOTADO!');
         }
 
-        // Placar Final (Estatísticas recebidas)
+        // Placar Final (Estatísticas recebidas pacote <STAT,...>)
         if (category === 'STAT') {
             setGameState('FIM');
             setDisplayInfo('FIM DE JOGO');
@@ -79,10 +79,10 @@ export default function GameScreen({ onGoBack }) {
             setFinalStats({ matchMode, statScore, errors, avgTime, avgForce, tempoDaPartida });
 
             // Envia para as nuvens com o tempo agora sendo incluído!
-            saveMatchStats(matchMode, statScore, errors, avgTime, avgForce, tempoDaPartida);
+            saveMatchStats(matchMode, statScore, errors, avgTime, avgForce, tempoDaPartida); // API persistência
         }
 
-    }, [lastParsedMessage, circleScale]);
+    }, [lastParsedMessage, circleScale]); // Triggered sempre que rx buffer atualiza
 
     return (
         <View style={styles.container}>
@@ -104,7 +104,7 @@ export default function GameScreen({ onGoBack }) {
                             {/* O Alvo (quadrado de mira que fecha) */}
                             <Animated.View style={[
                                 styles.targetVisual,
-                                { transform: [{ scale: circleScale }] }
+                                { transform: [{ scale: circleScale }] } // Vinculo valor animado à scale matricial
                             ]} />
                             
                             <Text style={styles.centerDisplay}>{displayInfo}</Text>

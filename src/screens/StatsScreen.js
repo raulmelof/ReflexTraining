@@ -72,9 +72,10 @@ export default function StatsScreen({ onGoBack }) {
     const [activeMode, setActiveMode] = useState('TEMPO');
 
     useEffect(() => {
-        getMatchHistory().then(data => setHistory(data));
+        getMatchHistory().then(data => setHistory(data)); // Fetch do backend DB
     }, []);
 
+    // Cacheia cálculo para prevenir re-renders pesados no JS Engine
     const timeStats = useMemo(() => {
         const groups = {
             'TEMPO (30s)':  [],

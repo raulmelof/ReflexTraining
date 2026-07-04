@@ -28,7 +28,7 @@ const ArcadeButton = ({ title, onPress, disabled, variant = 'primary' }) => {
 };
 
 export default function MenuScreen({ onOpenStats }) {
-    const { isConnected, connectToDevice, sendCommand } = useContext(BluetoothContext);
+    const { isConnected, connectToDevice, sendCommand } = useContext(BluetoothContext); // API serial TX
     
     // NOVO: Estado para memorizar o tempo selecionado (Padrão: 30s)
     const [timeLimit, setTimeLimit] = useState(30);
@@ -53,7 +53,7 @@ export default function MenuScreen({ onOpenStats }) {
                 {!isConnected ? (
                     <ArcadeButton 
                         title="[ CONECTAR HARDWARE ]" 
-                        onPress={() => connectToDevice('00:21:13:01:D7:ED')} // Substitua pelo seu MAC
+                        onPress={() => connectToDevice('00:21:13:01:D7:ED')} // Substitua pelo seu MAC BT (HC-05/06)
                         variant="secondary"
                     />
                 ) : (
@@ -86,7 +86,7 @@ export default function MenuScreen({ onOpenStats }) {
                         
                         <ArcadeButton 
                             title={`MODO TEMPO (${timeLimit}s)`} 
-                            // O payload agora injeta o tempo selecionado dinamicamente
+                            // O payload agora injeta o tempo selecionado dinamicamente via serial p/ UART STM32
                             onPress={() => sendCommand(`<CMD,START,TEMP,${timeLimit}>\n`)} 
                             variant="primary"
                         />
