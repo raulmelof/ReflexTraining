@@ -71,11 +71,15 @@ export default function GameScreen({ onGoBack }) {
             setGameState('FIM');
             setDisplayInfo('FIM DE JOGO');
             
-            // Grava os dados para o Recibo da Interface
-            setFinalStats({ matchMode, statScore, errors, avgTime, avgForce });
+            // value1 é o tempo que a placa nos devolve no pacote <STAT...>
+            // Se for sobrevivência, definimos como 0 para não ter erro de leitura
+            const tempoDaPartida = matchMode === 'TEMP' ? value1 : 0;
 
-            // Envia para as nuvens
-            saveMatchStats(matchMode, statScore, errors, avgTime, avgForce);
+            // Grava os dados para o Recibo da Interface
+            setFinalStats({ matchMode, statScore, errors, avgTime, avgForce, tempoDaPartida });
+
+            // Envia para as nuvens com o tempo agora sendo incluído!
+            saveMatchStats(matchMode, statScore, errors, avgTime, avgForce, tempoDaPartida);
         }
 
     }, [lastParsedMessage, circleScale]);

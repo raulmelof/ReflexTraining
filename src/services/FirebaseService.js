@@ -1,6 +1,6 @@
 import firestore from '@react-native-firebase/firestore';
 
-export const saveMatchStats = async (mode, score, errors, avgTime, avgForce) => {
+export const saveMatchStats = async (mode, score, errors, avgTime, avgForce, selectedTime = 0) => {
     try {
         console.log('☁️ [FIREBASE] Enviando métricas da partida...');
         
@@ -11,6 +11,7 @@ export const saveMatchStats = async (mode, score, errors, avgTime, avgForce) => 
             erros: errors,               // Quantas vezes errou o alvo
             media_reacao_ms: avgTime,    // Tempo médio de reação (Milissegundos)
             media_forca: avgForce,       // Força média aplicada no piezo
+            tempo_selecionado: selectedTime,
             data_partida: firestore.FieldValue.serverTimestamp(), // Pega a hora exata do servidor do Google
         });
 
