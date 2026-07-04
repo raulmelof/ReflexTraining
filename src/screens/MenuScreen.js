@@ -27,7 +27,7 @@ const ArcadeButton = ({ title, onPress, disabled, variant = 'primary' }) => {
     );
 };
 
-export default function MenuScreen() {
+export default function MenuScreen({ onOpenStats }) {
     const { isConnected, connectToDevice, sendCommand } = useContext(BluetoothContext);
     
     // NOVO: Estado para memorizar o tempo selecionado (Padrão: 30s)
@@ -97,6 +97,14 @@ export default function MenuScreen() {
                             title="SOBREVIVÊNCIA" 
                             onPress={() => sendCommand("<CMD,START,SURV,0>\n")} 
                             variant="primary"
+                        />
+                        
+                        <View style={styles.spacer} />
+                        
+                        <ArcadeButton 
+                            title="[ ESTATÍSTICAS ]" 
+                            onPress={onOpenStats} 
+                            variant="secondary"
                         />
                     </View>
                 )}

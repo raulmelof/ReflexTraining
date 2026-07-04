@@ -2,7 +2,8 @@ import React, { useContext, useState, useEffect } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 import { BluetoothProvider, BluetoothContext } from './src/contexts/BluetoothContext';
 import MenuScreen from './src/screens/MenuScreen';
-import GameScreen from './src/screens/GameScreen'; // Importamos a tela nova
+import GameScreen from './src/screens/GameScreen'; 
+import StatsScreen from './src/screens/StatsScreen'; // 1. IMPORTAMOS A NOVA TELA
 
 // Criamos um sub-componente para consumir o Contexto corretamente dentro do Provider
 const AppNavigator = () => {
@@ -20,13 +21,21 @@ const AppNavigator = () => {
     }
   }, [lastParsedMessage]);
 
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'GAME':
+        return <GameScreen onGoBack={() => setCurrentScreen('MENU')} />;
+      case 'STATS':
+        return <StatsScreen onGoBack={() => setCurrentScreen('MENU')} />;
+      case 'MENU':
+      default:
+        return <MenuScreen onOpenStats={() => setCurrentScreen('STATS')} />;
+    }
+  };
+
   return (
     <>
-      {currentScreen === 'MENU' ? (
-        <MenuScreen />
-      ) : (
-        <GameScreen onGoBack={() => setCurrentScreen('MENU')} />
-      )}
+      {renderScreen()}
     </>
   );
 };

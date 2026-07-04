@@ -1,4 +1,3 @@
-// src/services/FirebaseService.js
 import firestore from '@react-native-firebase/firestore';
 
 export const saveMatchStats = async (mode, score, errors, avgTime, avgForce) => {
@@ -18,5 +17,28 @@ export const saveMatchStats = async (mode, score, errors, avgTime, avgForce) => 
         console.log('✅ [FIREBASE] Partida salva com sucesso!');
     } catch (error) {
         console.error('❌ [FIREBASE] Erro ao salvar dados:', error);
+    }
+};
+
+export const getMatchHistory = async () => {
+    try {
+        console.log('☁️ [FIREBASE] Buscando histórico...');
+        // Sintaxe correta do @react-native-firebase encadeando os métodos!
+        const querySnapshot = await firestore()
+            .collection('MatchHistory')
+            .orderBy('data_partida', 'desc')
+            .limit(10)
+            .get();
+        
+        const history = [];
+        
+        querySnapshot.forEach((doc) => {
+            history.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return history;
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas do Firebase: ", error);
+        return [];
     }
 };
